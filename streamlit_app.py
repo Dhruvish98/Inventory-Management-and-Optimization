@@ -15,6 +15,7 @@ from visualizations import (
     plot_ai_enhanced_comparison
 )
 from ai_analysis import get_gemini_analysis, generate_pdf_report
+from ai_inventory_optimizer import ai_optimize_inventory_management, simulate_ai_enhanced_inventory
 
 # Page configuration
 st.set_page_config(
@@ -267,48 +268,45 @@ elif page == "📊 EOQ Analysis":
         ai_reorder_points = []
         ai_total_cost = 0
         ai_orders_count = 0
+        ai_optimized_eoq = None
+        ai_params = None
         
         if use_ai_enhancement:
-            # Get AI recommendations if API key is available
-            try:
-                api_key = st.secrets.get("GEMINI_API_KEY", None)
-                if api_key:
-                    # AI-enhanced logic: optimize reorder timing and quantities
-                    # Use dynamic reorder points based on demand variability
-                    demand_variance = monthly_demand * 0.15  # Assume 15% variance
-                    ai_reorder_point = calculate_reorder_point(annual_demand, 7, calculate_safety_stock(monthly_demand, demand_variance, 0.95), demand_variance)
-                    # AI might suggest slightly different order quantities
-                    ai_optimized_eoq = eoq * 0.95  # AI suggests 5% reduction for better cash flow
-                else:
-                    # Fallback AI logic without API
-                    demand_variance = monthly_demand * 0.15
-                    ai_reorder_point = calculate_reorder_point(annual_demand, 7, calculate_safety_stock(monthly_demand, demand_variance, 0.95), demand_variance)
-                    ai_optimized_eoq = eoq * 0.95
-            except:
-                demand_variance = monthly_demand * 0.15
-                ai_reorder_point = calculate_reorder_point(annual_demand, 7, calculate_safety_stock(monthly_demand, demand_variance, 0.95), demand_variance)
-                ai_optimized_eoq = eoq * 0.95
+            # Use advanced AI optimization algorithm
+            ai_params = ai_optimize_inventory_management(
+                annual_demand=annual_demand,
+                monthly_demand=monthly_demand,
+                ordering_cost=ordering_cost,
+                holding_cost=holding_cost,
+                eoq=eoq,
+                months=months,
+                initial_inventory=initial_inventory
+            )
             
-            ai_current_inventory = initial_inventory
-            np.random.seed(42)  # Set seed for reproducibility
-            for month in range(months):
-                # Deplete inventory with some variability (simulating real-world demand fluctuations)
-                monthly_demand_actual = monthly_demand * (1 + np.random.normal(0, 0.1))
-                ai_current_inventory -= monthly_demand_actual
-                
-                # AI-optimized reorder logic (more proactive reordering)
-                if ai_current_inventory <= ai_reorder_point:
-                    ai_current_inventory += ai_optimized_eoq
-                    ai_reorder_points.append(month + 1)
-                    ai_orders_count += 1
-                
-                ai_inventory_levels.append(max(0, ai_current_inventory))
+            ai_optimized_eoq = ai_params['ai_optimized_eoq']
             
-            # Calculate AI total cost properly
-            if ai_orders_count > 0:
-                ai_total_cost = (ordering_cost * ai_orders_count) + (holding_cost * np.mean(ai_inventory_levels) / 2)
-            else:
-                ai_total_cost = holding_cost * np.mean(ai_inventory_levels) / 2
+            # Simulate AI-enhanced inventory management
+            ai_inventory_levels, ai_reorder_points, ai_total_cost, ai_orders_count = simulate_ai_enhanced_inventory(
+                monthly_demand=monthly_demand,
+                ordering_cost=ordering_cost,
+                holding_cost=holding_cost,
+                months=months,
+                initial_inventory=initial_inventory,
+                ai_params=ai_params,
+                use_demand_forecasting=True
+            )
+            
+            # Display AI optimization details
+            with st.expander("🤖 AI Optimization Details", expanded=False):
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"**Target Inventory Level:** {ai_params['target_inventory']:.0f} units")
+                    st.write(f"**Safety Stock:** {ai_params['safety_stock']:.0f} units")
+                    st.write(f"**Optimal Reorder Point:** {ai_params['optimal_reorder_point']:.0f} units")
+                with col2:
+                    st.write(f"**AI Optimized EOQ:** {ai_optimized_eoq:.0f} units")
+                    st.write(f"**Cost Ratio (Holding/Ordering):** {ai_params['cost_ratio']:.2f}")
+                    st.write(f"**Optimization Strategy:** {'High Frequency' if ai_params['cost_ratio'] < 0.2 else 'Balanced' if ai_params['cost_ratio'] < 0.5 else 'Low Frequency'}")
         
         # Create comparison visualization
         if use_ai_enhancement:
@@ -328,7 +326,9 @@ elif page == "📊 EOQ Analysis":
             
             normal_orders = len(reorder_points)
             normal_avg_inventory = np.mean(inventory_levels)
-            normal_total_cost = (ordering_cost * normal_orders) + (holding_cost * normal_avg_inventory / 2)
+            # Annualized costs for fair comparison
+            normal_annual_orders = normal_orders * (12 / months)
+            normal_total_cost = (ordering_cost * normal_annual_orders) + (holding_cost * normal_avg_inventory)
             
             ai_avg_inventory = np.mean(ai_inventory_levels) if ai_inventory_levels else 0
             
