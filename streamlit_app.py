@@ -242,15 +242,29 @@ elif page == "📊 EOQ Analysis":
         months_list = []
         reorder_points = []
         
+        # Calculate reorder point for normal EOQ
+        lead_time_days = 7
+        daily_demand = annual_demand / 365
+        demand_variance = monthly_demand * 0.15
+        safety_stock = calculate_safety_stock(monthly_demand, demand_variance, 0.95)
+        reorder_point = (daily_demand * lead_time_days) + safety_stock
+        
         current_inventory = initial_inventory
+        # Use same random seed for fair comparison (but different sequence)
+        np.random.seed(42)
+        demand_pattern = []  # Store demand pattern for consistency
+        
         for month in range(months):
             months_list.append(month + 1)
             
-            # Deplete inventory
-            current_inventory -= monthly_demand
+            # Deplete inventory with same variability as AI (for fair comparison)
+            monthly_demand_actual = monthly_demand * (1 + np.random.normal(0, 0.1))
+            monthly_demand_actual = max(0, monthly_demand_actual)
+            demand_pattern.append(monthly_demand_actual)
             
-            # Reorder when reaching reorder point
-            reorder_point = calculate_reorder_point(monthly_demand * 12, monthly_demand / 30, 0, 0)
+            current_inventory -= monthly_demand_actual
+            
+            # Reorder when reaching reorder point (same logic as AI)
             if current_inventory <= reorder_point:
                 current_inventory += eoq
                 reorder_points.append(month + 1)
