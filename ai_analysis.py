@@ -34,9 +34,17 @@ def get_gemini_analysis(
     try:
         import google.generativeai as genai
         
-        # Configure Gemini
+        # Configure Gemini - use free tier model
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
+        # Use gemini-1.5-flash for free tier (faster and free)
+        # Fallback to gemini-1.5-pro if flash is not available
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')
+        except:
+            try:
+                model = genai.GenerativeModel('gemini-1.5-pro')
+            except:
+                model = genai.GenerativeModel('gemini-pro')
         
         # Create prompt based on analysis type
         prompt = _create_analysis_prompt(analysis_type, data_summary, sample_data)
@@ -106,19 +114,6 @@ def _create_analysis_prompt(
         4. Priority management strategies
         
         Focus on actionable insights for inventory optimization.
-        """
-    
-    elif analysis_type == "📉 Forecasting Analysis":
-        prompt = f"""
-        {base_context}
-        
-        Analyze the demand forecasting results:
-        1. Accuracy assessment of different forecasting methods
-        2. Which method performs better and why
-        3. Recommendations for improving forecast accuracy
-        4. Implications for inventory planning
-        
-        Provide technical insights in an accessible manner.
         """
     
     elif analysis_type == "💰 Cost Optimization Recommendations":

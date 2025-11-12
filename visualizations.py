@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 
 def plot_inventory_depletion(
@@ -383,6 +383,162 @@ def plot_cost_breakdown(
         title=f'Cost Breakdown (Total: ${total_cost:,.2f})',
         template="plotly_white",
         height=400
+    )
+    
+    return fig
+
+
+def plot_ai_enhanced_comparison(
+    months: List[int],
+    normal_levels: List[float],
+    normal_reorder_points: List[int],
+    normal_eoq: float,
+    ai_levels: List[float],
+    ai_reorder_points: List[int],
+    ai_eoq: Optional[float]
+) -> go.Figure:
+    """
+    Create comparison plot showing normal vs AI-enhanced inventory management
+    
+    Args:
+        months: List of month numbers
+        normal_levels: Normal inventory levels
+        normal_reorder_points: Months where normal reorder occurred
+        normal_eoq: Normal EOQ value
+        ai_levels: AI-enhanced inventory levels
+        ai_reorder_points: Months where AI reorder occurred
+        ai_eoq: AI-optimized EOQ value
+    
+    Returns:
+        Plotly figure object
+    """
+    fig = go.Figure()
+    
+    # Normal inventory line
+    fig.add_trace(go.Scatter(
+        x=months,
+        y=normal_levels,
+        mode='lines+markers',
+        name='Normal EOQ Management',
+        line=dict(color='#1f77b4', width=2),
+        marker=dict(size=8, color='#1f77b4'),
+        hovertemplate='Month: %{x}<br>Inventory: %{y:.0f} units<extra></extra>'
+    ))
+    
+    # AI-enhanced inventory line
+    fig.add_trace(go.Scatter(
+        x=months,
+        y=ai_levels,
+        mode='lines+markers',
+        name='AI-Enhanced Management',
+        line=dict(color='#4ECDC4', width=2, dash='dash'),
+        marker=dict(size=8, color='#4ECDC4', symbol='diamond'),
+        hovertemplate='Month: %{x}<br>AI Inventory: %{y:.0f} units<extra></extra>'
+    ))
+    
+    # Add labels for normal inventory points
+    for i, (month, inv) in enumerate(zip(months, normal_levels)):
+        if i % 2 == 0:  # Label every other point to avoid clutter
+            fig.add_annotation(
+                x=month,
+                y=inv,
+                text=f'{inv:.0f}',
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=1,
+                arrowcolor='#636363',
+                ax=0,
+                ay=-30,
+                font=dict(size=8, color='#636363')
+            )
+    
+    # Mark normal reorder points
+    if normal_reorder_points:
+        normal_reorder_inventory = [normal_levels[m-1] for m in normal_reorder_points if m <= len(normal_levels)]
+        fig.add_trace(go.Scatter(
+            x=normal_reorder_points[:len(normal_reorder_inventory)],
+            y=normal_reorder_inventory,
+            mode='markers',
+            name='Normal Reorder',
+            marker=dict(
+                size=12,
+                color='red',
+                symbol='circle',
+                line=dict(width=2, color='darkred')
+            ),
+            hovertemplate='Normal Reorder at Month: %{x}<br>Inventory: %{y:.0f} units<extra></extra>'
+        ))
+    
+    # Mark AI reorder points
+    if ai_reorder_points:
+        ai_reorder_inventory = [ai_levels[m-1] for m in ai_reorder_points if m <= len(ai_levels)]
+        fig.add_trace(go.Scatter(
+            x=ai_reorder_points[:len(ai_reorder_inventory)],
+            y=ai_reorder_inventory,
+            mode='markers',
+            name='AI Reorder',
+            marker=dict(
+                size=12,
+                color='green',
+                symbol='diamond',
+                line=dict(width=2, color='darkgreen')
+            ),
+            hovertemplate='AI Reorder at Month: %{x}<br>Inventory: %{y:.0f} units<extra></extra>'
+        ))
+    
+    # Add EOQ reference lines
+    fig.add_hline(
+        y=normal_eoq,
+        line_dash="dash",
+        line_color="blue",
+        annotation_text=f"Normal EOQ: {normal_eoq:.0f}",
+        annotation_position="right",
+        annotation_font_size=10
+    )
+    
+    if ai_eoq:
+        fig.add_hline(
+            y=ai_eoq,
+            line_dash="dot",
+            line_color="green",
+            annotation_text=f"AI EOQ: {ai_eoq:.0f}",
+            annotation_position="right",
+            annotation_font_size=10
+        )
+    
+    # Update layout
+    fig.update_layout(
+        title={
+            'text': 'Normal vs AI-Enhanced Inventory Management Comparison',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20}
+        },
+        xaxis_title="Month",
+        yaxis_title="Inventory Level (units)",
+        hovermode='x unified',
+        template="plotly_white",
+        height=600,
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='lightgray',
+            dtick=1
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='lightgray'
+        )
     )
     
     return fig
